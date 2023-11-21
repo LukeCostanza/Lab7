@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <title>Lab 7</title>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <link href='https://api.mapbox.com/mapbox-assembly/v1.5.1/assembly.min.css' rel='stylesheet'>
+    <script async defer src='https://api.mapbox.com/mapbox-assembly/v1.5.1/assembly.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.3.1/mapbox-gl.css' rel='stylesheet' />
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.3.1/mapbox-gl.js'></script>
+    <style type="text/css">
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+        #sidebar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+            width: 250px;
+            height: 100%;
+            overflow-y: auto;
+        }
+        #map {
+            position: absolute;
+            top: 0;
+            left: 250px;
+            width: calc(100% - 250px);
+            height: 100%;
+        }
+        .selected {
+            background-color: #4CAF50; /* Green background for selected items */
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar" class="absolute fl my24 mx24 py24 px24 bg-gray-faint round">
+        <!-- Travel Mode Section -->
+        <div class="travel-mode">
+            <h3>Travel Mode</h3>
+            <button class="button">Walking</button>
+            <button class="button">Cycling</button>
+            <button class="button">Driving</button>
+        </div>
+        
+        <!-- Maximum Duration Section -->
+        <div class="max-duration">
+            <h3>Maximum Duration</h3>
+            <button class="button">10 minutes</button>
+            <button class="button">20 minutes</button>
+            <button class="button">30 minutes</button>
+        </div>
+    </div>
+
+    <div id="map"></div>
+    <script type="text/javascript">
+        mapboxgl.accessToken = 'pk.eyJ1IjoibHVrZWNvc3RhbnphIiwiYSI6ImNscDdsNmRyNzIwMnQyanJ4ZXNnOGM4dTcifQ.PMyQ9alQLiwU3wveq5QlxQ';
+
+        var map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v11',
+            center: [-87.6572786824417, 41.872419989986234], // Replace with your default center
+            zoom: 13
+        });
+
+        const markerCoordinates = [-87.6572786824417, 41.872419989986234];
+        var selectedProfile = 'cycling';
+        var selectedDuration = 10;
+
+        function getIso() {
+            var url = `https://api.mapbox.com/isochrone/v1/mapbox/${selectedProfile}/${markerCoordinates[0]},${markerCoordinates[1]}?contours_minutes=${selectedDuration}&polygons=true&access_token=${mapboxgl.accessToken}`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (map.getSource('iso')) {
+                        map.getSource('iso').setData(data);
+                    } else {
+                        map.addSource('iso', {
+                            type: 'geojson',
+                            data: data
+                        });
+
+                        map.addLayer({
+                            id: 'isoLayer',
+                            type: 'fill',
+                            source: 'iso',
+                            layout: {},
+                            paint: {
+                                'fill-color': '#5a3fc0', // Customize the fill color
+                                'fill-opacity': 0.5      // Customize the opacity
+                            }
+                        });
+                    }
+                }).catch(error => console.error('Error fetching Isochrone data:', error));
+        }
+
+        map.on('load', function () {
+            getIso(); // Initial call with default values
+            const marker = new mapboxgl.Marker({
+                color: '#314ccd'
+            }).setLngLat(markerCoordinates).addTo(map);
+        });
+
+        function updateSelectedButton(containerSelector, selectedText) {
+            document.querySelectorAll(containerSelector + ' .button').forEach(button => {
+                if (button.innerText === selectedText) {
+                    button.classList.add('selected');
+                } else {
+                    button.classList.remove('selected');
+                }
+            });
+        }
+
+        document.querySelectorAll('.travel-mode button').forEach(button => {
+            button.addEventListener('click', function() {
+                selectedProfile = this.innerText.toLowerCase();
+                updateSelectedButton('.travel-mode', this.innerText);
+                getIso();
+            });
+        });
+
+        document.querySelectorAll('.max-duration button').forEach(button => {
+            button.addEventListener('click', function() {
+                selectedDuration = parseInt(this.innerText);
+                updateSelectedButton('.max-duration', this.innerText);
+                getIso();
+            });
+        });
+    </script>
+</body>
+</html>
+
